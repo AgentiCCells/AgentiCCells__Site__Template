@@ -8,7 +8,10 @@ node scripts/leak-scan.mjs
 for i in 1 2 3 4 5; do
   git fetch -q origin dev
   git rebase -q origin/dev
-  node scripts/build.mjs >/dev/null && node scripts/validate.mjs >/dev/null && node scripts/leak-scan.mjs >/dev/null
+  # One gate per line: under set -e a failure inside an && chain does not stop the script (specialist.code@ finding 1).
+  node scripts/build.mjs >/dev/null
+  node scripts/validate.mjs >/dev/null
+  node scripts/leak-scan.mjs >/dev/null
   if git -c push.negotiate=true push -q origin HEAD:dev; then echo "released $(git rev-parse --short HEAD) to dev"; exit 0; fi
   sleep $((i * 3))
 done
