@@ -1,0 +1,2 @@
+This file marks the template itself. While it exists, the __SITE_*__ placeholders are allowed.
+The factory's seed step replaces the placeholders and deletes this file.

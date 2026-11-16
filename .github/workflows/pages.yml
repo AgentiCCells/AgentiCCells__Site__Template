@@ -1,7 +1,7 @@
 name: Pages
-# From .github/workflows/pages.yml in AgentiCCells__Website. Changes for the
-# template: no policy-derive step; deploy runs only when CNAME exists (the
-# template itself has none, so it is built, checked and versioned, not deployed).
+# From the site repositories made by sites@AgentiCCells.dinis (2026-11-16). In the
+# template itself (.factory-template exists) nothing is deployed: it is built,
+# checked and versioned only. A seeded site deploys on every push to dev.
 on:
   push:
     branches: [dev]
@@ -12,15 +12,15 @@ concurrency:
   group: pages
   cancel-in-progress: false
 env:
-  # Major and minor are set here by a person. The patch number is set by this
-  # workflow only: the first release is v0.1.0, each later push adds one.
+  # Major and minor are set here by a person. The patch number is set by this workflow only:
+  # the first release is v0.1.0, and each later push to dev adds one.
   VERSION_BASE: '0.1'
 jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
-      deploy: ${{ steps.cname.outputs.deploy }}
+      deploy: ${{ steps.mode.outputs.deploy }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,13 +28,13 @@ jobs:
       - id: version
         name: Work out the next version from the tags
         run: |
-          last=$(git tag --list "v${VERSION_BASE}.*" | sed "s/^v${VERSION_BASE}\.//" | grep -E '^[0-9]+$' | sort -n | tail -1)
+          last=$(git tag --list "v${VERSION_BASE}.*" | sed "s/^v${VERSION_BASE}\.//" | grep -E '^[0-9]+$' | sort -n | tail -1 || true)
           if [ -z "$last" ]; then next=0; else next=$((last + 1)); fi
           echo "version=v${VERSION_BASE}.${next}" >> "$GITHUB_OUTPUT"
           echo "Version: v${VERSION_BASE}.${next}"
-      - id: cname
-        name: Deploy only when the site has a domain
-        run: if [ -s CNAME ]; then echo "deploy=true" >> "$GITHUB_OUTPUT"; else echo "deploy=false" >> "$GITHUB_OUTPUT"; fi
+      - id: mode
+        name: Deploy unless this is the template itself
+        run: if [ -e .factory-template ]; then echo deploy=false >> "$GITHUB_OUTPUT"; else echo deploy=true >> "$GITHUB_OUTPUT"; fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -42,19 +42,19 @@ jobs:
         env:
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.sha }}
-        run: node build/check-commits.mjs "$BEFORE" "$AFTER"
-      - run: node build/build.mjs
+        run: node scripts/check-commits.mjs "$BEFORE" "$AFTER"
+      - run: node scripts/build.mjs
         env:
           SITE_VERSION: ${{ steps.version.outputs.version }}
-      - run: node build/validate.js
+      - run: node scripts/validate.mjs
       - name: Leak scan (tracked files and the built site)
-        run: node build/leak-scan.mjs
-      - if: steps.cname.outputs.deploy == 'true'
+        run: node scripts/leak-scan.mjs
+      - if: steps.mode.outputs.deploy == 'true'
         uses: actions/configure-pages@v5
-      - if: steps.cname.outputs.deploy == 'true'
+      - if: steps.mode.outputs.deploy == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: _site
   deploy:
     needs: build
     if: needs.build.outputs.deploy == 'true'

@@ -1,14 +1,18 @@
 // The leak scan. Must print OK before every commit and in the Pages workflow.
 // Node built-ins only. Written by security@agenticcells.dinis, 2026-11-15.
+// Site template version (factory@AgentiCCells.dinis, 2026-11-16): scans _site/ instead
+// of site/, skips the vault's ciphertext under .sg_vault/bare/, fails on any tracked
+// file from .sg_vault/local/, and fails if this checkout's own vault key or token
+// appears anywhere (the last two from the site repositories made by sites@).
 //
 // Scans every file git knows about (tracked, plus untracked files that are not
-// ignored, so a new file is caught before its first commit) and the built site/.
+// ignored, so a new file is caught before its first commit) and the built _site/.
 // It looks for secret shapes and reports the file, the line and the kind of
 // shape. It never prints the matched text: a finding is described, never quoted.
 //
 // Usage:
-//   node build/leak-scan.mjs              scan the working tree and site/
-//   node build/leak-scan.mjs --history    scan every commit reachable in this
+//   node scripts/leak-scan.mjs            scan the working tree and _site/
+//   node scripts/leak-scan.mjs --history    scan every commit reachable in this
 //                                         clone (git log -p --all); fetch more
 //                                         history first in a shallow clone
 //
@@ -126,18 +130,28 @@ function walk(dir) {
 function scanTree() {
   const files = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: root })
     .toString().split('\0').filter(Boolean);
-  const siteDir = join(root, 'site');
-  if (!existsSync(join(siteDir, 'index.html'))) return { errors: ['site/ is not built: run node build/build.mjs first'], count: 0 };
+  const siteDir = join(root, '_site');
+  if (!existsSync(join(siteDir, 'index.html'))) return { errors: ['_site/ is not built: run node scripts/build.mjs first'], count: 0 };
   const paths = [...new Set([...files, ...walk(siteDir).map((p) => p.slice(root.length + 1))])];
   const errors = [];
   let count = 0, skipped = 0;
+  // The vault's own secrets, when this checkout holds them, must appear nowhere.
+  const secrets = [];
+  for (const k of ['.sg_vault/local/vault_key', '.sg_vault/local/token']) {
+    const f = join(root, k);
+    if (existsSync(f)) { const v = readFileSync(f, 'utf8').trim(); secrets.push(v, v.split(':')[0]); }
+  }
   for (const p of paths) {
+    if (p.startsWith('.sg_vault/local/')) { errors.push(`${p}: a file from .sg_vault/local/ is in the tree (it holds vault keys)`); continue; }
+    if (p.startsWith('.sg_vault/bare/')) { skipped++; continue; } // ciphertext, protected by the vault key
     const full = join(root, p);
     if (!existsSync(full) || statSync(full).isDirectory()) continue; // deleted in the working tree
     const buf = readFileSync(full);
     if (isBinary(buf)) { skipped++; continue; }
     count++;
-    for (const f of scanText(p, buf.toString('utf8'))) errors.push(`${p}:${f.line}: ${f.kind}`);
+    const t = buf.toString('utf8');
+    for (const f of scanText(p, t)) errors.push(`${p}:${f.line}: ${f.kind}`);
+    for (const x of secrets) if (x && x.length >= 8 && t.includes(x)) errors.push(`${p}: holds this checkout's vault key or token`);
   }
   return { errors, count, skipped };
 }

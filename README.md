@@ -1,25 +1,25 @@
 # AgentiCCells Site Template
 
-The seed every site from the AgentiCCells site factory is created from (AgentiCCells__Site__Factory, stage FAC-004). Cut down from AgentiCCells__Website on 2026-11-15 by factory@AgentiCCells.dinis.
+The seed every site from the AgentiCCells site factory is created from (AgentiCCells__Site__Factory, FAC-004). Its layout follows the site repositories made by hand by sites@AgentiCCells.dinis on 2026-11-16, which are live; the gates are the team's stronger versions.
 
-## What a site gets
-- `content/*.md`: the pages, with `title`, `description` and optional `nav` front matter.
-- `site.json`: the site's name, description and contact address (may be empty).
-- `CNAME`: the site's domain. **The template has none**; the factory's seed step writes it. Without it, CI builds, checks and versions the site but does not deploy it.
-- `build/build.mjs`: builds `site/`, with no dependencies. Page hooks go in `build/pages/*.mjs`.
-- Gates: `build/validate.js` (structure, links, wording, key shapes, no third-party scripts), `build/leak-scan.mjs` (secret shapes), `build/check-commits.mjs` (every commit carries `Agent: role@AgentiCCells.person`).
-- `.github/workflows/pages.yml`: on every push to `dev`, run the gates, deploy to GitHub Pages when `CNAME` exists, and tag the next `v0.1.N`.
-- `team/release.sh`: run every gate with no pipes, rebase on `dev`, push, retry.
+## Layout
+- `src/`: the site, copied to `_site/` by `scripts/build.mjs`, which replaces `__VERSION__` and writes `_site/version.json`.
+- `hub.json`: the site's entry for the hub.
+- `scripts/validate.mjs`: structure, links, wording, no third-party scripts, hub.json fields, no template placeholder in a seeded site.
+- `scripts/leak-scan.mjs`: secret shapes over tracked files and `_site/`; skips the vault's ciphertext; fails on any file from `.sg_vault/local/`.
+- `scripts/check-commits.mjs`: every commit carries `Agent: role@AgentiCCells.person`.
+- `scripts/release.sh`: every gate with no pipes, rebase on `dev`, push, retry.
+- `.github/workflows/pages.yml`: on every push to `dev`, the gates, then deploy to GitHub Pages and tag the next `v0.1.N`.
+- `.gitignore`: keeps `.sg_vault/local/`, `.sg_vault/work/`, `*.pem` and `_site/` out of git. `.gitattributes` marks the vault store as binary.
 - `CLAUDE.md`: the team's rules, copied unchanged.
+
+## Placeholders
+`__SITE_NAME__`, `__SITE_DESCRIPTION__`, `__SITE_REPO__` (owner/name) and `__SITE_DOMAIN__` appear in `src/` and `hub.json`. The factory's seed step replaces them and deletes `.factory-template`. While that file exists (the template itself), placeholders are allowed and CI builds, checks and tags but does not deploy.
 
 ## Release
 ```
-node build/build.mjs && node build/validate.js && node build/leak-scan.mjs
-team/release.sh
+node scripts/build.mjs && node scripts/validate.mjs && node scripts/leak-scan.mjs
+scripts/release.sh
 ```
-Commit messages end with one trailer block, no blank lines inside it, starting `Agent: role@AgentiCCells.person`.
-
-## What a person still does for a new site (until the factory automates it)
-Set the default branch to `dev`; allow `dev` to deploy in the `github-pages` environment; set the Pages source to GitHub Actions; point DNS at GitHub Pages; verify the domain in the organisation. Source: map/site-creation.md in AgentiCCells__Website.
 
 Licences: code Apache-2.0; text CC BY 4.0.

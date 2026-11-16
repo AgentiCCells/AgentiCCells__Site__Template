@@ -1,0 +1,11 @@
+{
+  "schema": "hub.json (draft)",
+  "name": "__SITE_NAME__",
+  "what_it_does": "__SITE_DESCRIPTION__",
+  "owner": "AgentiCCells",
+  "team": "factory@AgentiCCells.dinis, instructed by Dinis Cruz",
+  "licence": { "code": "Apache-2.0", "text": "CC BY 4.0" },
+  "repository": "https://github.com/__SITE_REPO__",
+  "live_address": "https://__SITE_DOMAIN__",
+  "version_from": "/version.json"
+}

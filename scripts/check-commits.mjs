@@ -1,6 +1,6 @@
 // ACC-015: every non-merge commit a push adds to dev must carry a readable Agent: trailer,
 // read the way git reads it: git log --format=%(trailers:key=Agent,valueonly).
-// Usage: node build/check-commits.mjs <before> <after>   (the pushed range, before..after)
+// Usage: node scripts/check-commits.mjs <before> <after>   (the pushed range, before..after)
 // Commits older than this check are skipped: those that neither descend from the commit
 // that added this file nor were committed after it. History is not rewritten (ACC-015).
 // Prints OK or lists each commit that fails and exits 1.
@@ -14,8 +14,8 @@ const [beforeArg, afterArg] = process.argv.slice(2);
 const after = afterArg || 'HEAD';
 if (!tryGit('rev-parse', '--verify', '--quiet', `${after}^{commit}`)) { console.error(`check-commits: unknown commit ${after}`); process.exit(1); }
 
-const first = lines(git('log', '--format=%H', '--diff-filter=A', '--reverse', after, '--', 'build/check-commits.mjs'))[0];
-if (!first) { console.error('check-commits: cannot find the commit that added build/check-commits.mjs'); process.exit(1); }
+const first = lines(git('log', '--format=%H', '--diff-filter=A', '--reverse', after, '--', 'scripts/check-commits.mjs'))[0];
+if (!first) { console.error('check-commits: cannot find the commit that added scripts/check-commits.mjs'); process.exit(1); }
 const firstTime = Number(git('log', '-1', '--format=%ct', first));
 
 // A new branch, a forced push or a manual run has no usable "before": check everything since the check began.
